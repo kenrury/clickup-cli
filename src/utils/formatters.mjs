@@ -31,7 +31,7 @@ export function formatDateTime(timestamp) {
 }
 
 export function formatPriority(priority) {
-  const value = typeof priority === 'object' ? priority.priority : priority;
+  const value = priority && typeof priority === 'object' ? priority.priority : priority;
   if (!value) {
     return 'None';
   }

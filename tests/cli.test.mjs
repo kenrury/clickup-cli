@@ -146,3 +146,63 @@ test('runCli allows dash-prefixed comment text as a positional argument', async 
   assert.match(stdout.toString(), /Comment posted successfully/);
   assert.equal(stderr.toString(), '');
 });
+
+test('runCli prints my tasks as json when a task priority is null', async () => {
+  const stdout = createBufferStream();
+  const stderr = createBufferStream();
+
+  const exitCode = await runCli({
+    argv: ['my-tasks', '--json'],
+    env: baseEnv(),
+    stdout,
+    stderr,
+    fetchImpl: async (url) => {
+      const parsedUrl = new URL(url);
+
+      if (parsedUrl.pathname === '/api/v2/user') {
+        return new Response(JSON.stringify({
+          user: {
+            id: 'user-1',
+            username: 'jane',
+            email: 'jane@example.com',
+          },
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      if (parsedUrl.pathname === '/api/v2/team/workspace-1/task') {
+        assert.equal(parsedUrl.searchParams.get('subtasks'), 'true');
+        assert.deepEqual(parsedUrl.searchParams.getAll('assignees[]'), ['user-1']);
+
+        return new Response(JSON.stringify({
+          tasks: [
+            {
+              id: 'task-1',
+              name: 'Null priority task',
+              priority: null,
+              status: { status: 'to do' },
+            },
+          ],
+        }), {
+          status: 200,
+          headers: { 'content-type': 'application/json' },
+        });
+      }
+
+      throw new Error(`Unexpected URL: ${url}`);
+    },
+  });
+
+  assert.equal(exitCode, 0);
+  assert.equal(stderr.toString(), '');
+  assert.deepEqual(JSON.parse(stdout.toString()), [
+    {
+      id: 'task-1',
+      name: 'Null priority task',
+      priority: null,
+      status: { status: 'to do' },
+    },
+  ]);
+});
