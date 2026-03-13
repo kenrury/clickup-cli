@@ -1,31 +1,35 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-This repository is a small Node-based Codex skill rather than a full application. The package manifest lives at `package.json`. The implementation is under `.agents/skills/clickup/`:
+This repository is a globally installable Node CLI package plus a bundled Codex skill reference. The package manifest lives at `package.json`. Runtime code is organized as follows:
 
-- `query.mjs`: CLI entrypoint for task and document commands.
-- `api/`: ClickUp API clients grouped by domain (`tasks.mjs`, `docs.mjs`, `comments.mjs`).
-- `lib/`: shared parsing and formatting helpers.
-- `SKILL.md`: end-user usage and setup notes.
-- `.env-example`: template for local configuration. Never commit a real `.env`.
+- `bin/clickup.js`: global CLI entrypoint.
+- `src/cli/`: argument parsing, command registration, help output, and handlers.
+- `src/services/`: ClickUp task, comment, doc, and user workflows.
+- `src/http/`: shared ClickUp HTTP client.
+- `src/utils/`: ID parsing, date parsing, Markdown conversion, and formatters.
+- `tests/`: automated coverage with `node:test`.
+- `skills/clickup/`: skill-facing documentation for agents that should call the global `clickup` binary.
 
-Keep new code in the existing `api/` or `lib/` folders instead of adding ad hoc top-level files.
+Keep runtime code under `src/` and keep skill guidance under `skills/clickup/` instead of reintroducing repo-local script entrypoints.
 
 ## Build, Test, and Development Commands
 There is no build step; the CLI runs directly with Node.
 
 - `pnpm install`: install package metadata and any future dependencies.
-- `node .agents/skills/clickup/query.mjs me`: verify local auth and cached user detection.
-- `node .agents/skills/clickup/query.mjs get <task-id>`: exercise the main task lookup path.
-- `pnpm test`: currently a placeholder that exits with an error; replace it when adding real tests.
+- `node bin/clickup.js --help`: verify the local CLI entrypoint and command registration.
+- `node bin/clickup.js me`: verify local auth and current user detection.
+- `node bin/clickup.js get <task-id>`: exercise the main task lookup path.
+- `pnpm test`: run the automated test suite.
+- `npm run pack:check`: inspect the npm publish payload before release.
 
 Prefer running commands against test tasks or docs when changing API behavior.
 
 ## Coding Style & Naming Conventions
-Use ES modules (`.mjs`), 2-space indentation, semicolons, and single quotes, matching `query.mjs`. Keep command handlers explicit and side effects near the CLI layer. Use descriptive verb-based function names such as `getTask`, `createPage`, or `formatTaskList`. Put network calls in `api/` and pure helpers in `lib/`.
+Use ES modules (`.mjs`), 2-space indentation, semicolons, and single quotes, matching the files under `src/`. Keep command handlers explicit and side effects near the CLI layer. Use descriptive verb-based function names such as `getTask`, `createPage`, or `formatTaskList`. Put network calls in `src/services/` and `src/http/`, and keep pure helpers in `src/utils/`.
 
 ## Testing Guidelines
-Automated tests are not configured yet. For now, validate changes with focused CLI invocations and `--json` output where possible. When adding tests, place them under `tests/` or beside the module with a clear `*.test.mjs` name, and wire them into `pnpm test`.
+Automated tests are configured with `node:test`. Validate changes with `pnpm test` plus focused CLI invocations and `--json` output where helpful. Keep new tests under `tests/` with a clear `*.test.mjs` name.
 
 ## Commit & Pull Request Guidelines
 This checkout does not include Git history, so no local commit convention can be inferred. Use short imperative subjects with a clear scope, for example `clickup: add doc page rename support`. In pull requests, include:
@@ -35,4 +39,4 @@ This checkout does not include Git history, so no local commit convention can be
 - notes about new env vars, API fields, or breaking command changes
 
 ## Security & Configuration Tips
-Copy `.agents/skills/clickup/.env-example` to a local `.env`, but never read, print, or commit secrets. Redact task URLs, IDs, and tokens in logs or screenshots shared in reviews.
+Never read, print, or commit `.env` files or any secrets. The CLI reads configuration from shell environment variables such as `CLICKUP_API_TOKEN`, `CLICKUP_WORKSPACE_ID`, `CLICKUP_USER_ID`, and `CLICKUP_DEFAULT_LIST_ID`; keep setup guidance in `README.md` and `skills/clickup/README.md`. Redact task URLs, IDs, and tokens in logs or screenshots shared in reviews.
